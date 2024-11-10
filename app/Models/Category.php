@@ -27,4 +27,14 @@ class Category extends Model
         $this-> attributes['slug'] = Str::slug($value);
 
     }
+
+    public function brandCategories(): HasMany 
+    {
+        return $this->hasMany(BrandCategory::class, 'brand_id');
+    }
+
+    public function products(): HasMany 
+    {
+        return $this->hasMany(Product::class);
+    }
 }

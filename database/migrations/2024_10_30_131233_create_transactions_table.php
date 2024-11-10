@@ -18,6 +18,8 @@ return new class extends Migration
             $table->string('phone_number');
             $table->string('proof');
             $table->text('address');
+            $table->unsignedBigInteger('duration');
+            $table->date('started_at');
             $table->date('ended_at');
             $table->boolean('is_paid');
             $table->enum('delivery_type',['pickup', 'home_delivery'])->default('pickup');
