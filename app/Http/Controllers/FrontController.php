@@ -3,11 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreBookingRequest;
+use App\Http\Requests\StorePaymentRequest;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Store;
+use App\Models\Transaction;
+use Carbon\Carbon;
+
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+
 
 class FrontController extends Controller
 {
@@ -46,6 +52,8 @@ class FrontController extends Controller
     }
     
     public function booking_save(StoreBookingRequest $request, Product $product){
+
+        session()->put('product_id',$product->id);
         $bookingData = $request->only(['duration', 'started_at', 'store_id', 'delivery_type', 'address']);
     
         session($bookingData);
@@ -55,7 +63,7 @@ class FrontController extends Controller
 
     public function checkout(Product $product){
         $duration  = session('duration');
-        $insurance =90000;
+        $insurance =900000;
         $ppn  = 0.11;
         $price = $product ->price;
 
@@ -67,6 +75,85 @@ class FrontController extends Controller
 
     //    dd($duration);
     }
-    
 
+    public function checkout_store(StorePaymentRequest $request) {
+        $bookingData = session()->only(['duration', 'started_at', 'store_id', 'delivery_type', 'address', 'product_id']);
+    
+        $duration = (int) $bookingData['duration'];
+        $startedDate = Carbon::parse($bookingData['started_at']);
+    
+        $productDetails = Product::find($bookingData['product_id']);
+        if (!$productDetails) {
+            return redirect()->back()->withErrors(['product_id' => 'Product not found.']);
+        }
+    
+        $insurance = 900000;
+        $ppn = 0.11;
+        $price = $productDetails->price;
+    
+        $subTotal = $price * $duration;
+        $totalPpn = $subTotal * $ppn;
+        $grandTotal = $subTotal + $totalPpn + $insurance;
+    
+        $bookingTransactionId = null;
+    
+        // Implement additional logic here if needed
+        DB::transaction (function() use ($request, &$bookingTransactionId, $duration, $bookingData, $grandTotal, $productDetails, $startedDate){
+
+            $validated = $request->validated();
+            if($request->hasFile('proof')){
+            $proofPath = $request->file('proof') ->store('proofs', 'public'); $validated ['proof'] = $proofPath;
+            }
+            $endedDate = $startedDate->copy()->addDays($duration);
+            $validated ['started_at'] = $startedDate;
+            $validated ['ended_at'] = $endedDate;
+            $validated [ 'duration'] = $duration;
+            $validated ['total_amount'] = $grandTotal;
+            $validated ['store_id'] = $bookingData['store_id'];
+            $validated ['product_id'] = $productDetails->id;
+            $validated ['delivery_type'] = $bookingData['delivery_type']; $validated ['address'] = $bookingData['address'];
+            $validated ['is_paid'] = false;
+            $validated [ 'trx_id'] = Transaction::generateUniqueTrxId();
+        
+            $newBooking = Transaction::create($validated);
+            $bookingTransactionId = $newBooking->id;
+    });
+    return redirect()->route('front.success.booking', $bookingTransactionId);
+
+    }
+    
+    public function success_booking(Transaction $transaction){
+        return view('front.success_booking', compact('transaction'));
+    }
+
+    public function transactions(){
+        return view('front.transactions');
+    }
+   
+    public function transactions_details (Request $request){ 
+        $request->validate([
+            'trx_id' => ['required', 'string', 'max:255'], 
+            'phone_number' =>['required', 'string', 'max: 255'],
+        ]);
+    $trx_id = $request->input('trx_id');
+    $phone_number = $request->input('phone_number');
+
+    $details = Transaction::with(['store', 'product']) 
+    ->where('trx_id', $trx_id)
+    ->where('phone_number', $phone_number)
+    ->first();
+
+
+    if(!$details) {
+    return redirect()->back()->withErrors(['error' => 'Transactions not found.']);
+}
+
+    $insurance = 900000;
+    $ppn = 0.11;
+    $totalPpn= $details->product->price * $ppn;
+    $duration= $details->duration;
+    $subTotal = $details->product->price * $duration;
+    return view('front.transaction_details', compact('details', 'totalPpn', 'subTotal','insurance'));
+    
+}
 }

@@ -9,7 +9,7 @@ Route::post('/transactions/details', [FrontController::class, 'transactions_deta
 
 
 
-
+Route::get('/details/{product:slug}', [FrontController::class, 'details'])->name('front.details');
 Route::get('/booking/{product:slug}', [FrontController::class, 'booking'])->name('front.booking');
 Route::post('/booking/{product:slug}/save', [FrontController::class, 'booking_save'])->name('front.booking_save');
 

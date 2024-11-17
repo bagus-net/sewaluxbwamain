@@ -81,6 +81,7 @@ document.addEventListener("DOMContentLoaded", function () {
 function toggleRequiredOptions() {
     const pickupRadio = document.getElementById('Pickup');
     const deliveryRadio = document.getElementById('Delivery');
+    const deliveryType = document.getElementById('deliveryType');
     const storeRadios = document.getElementsByName('store');
     const addressTextarea = document.getElementsByName('address')[0];
 
@@ -89,12 +90,15 @@ function toggleRequiredOptions() {
             radio.required = true;
         });
         addressTextarea.value = 'Diambil di toko saja';
+        deliveryType.value =   'Pickup';
         // addressTextarea.required = false;
     } else if (deliveryRadio.checked) {
         storeRadios.forEach(radio => {
             radio.required = false;
         });
         addressTextarea.value = '';
+        deliveryType.value =   'Home_Delivery';
+        document.querySelector('input[name="store_id"]').value =1;
         // addressTextarea.required = true;
     }
 }
